@@ -11,10 +11,13 @@ import { environment } from "../environments/environment";
 export class MapService {
   map: mapboxgl.Map;
   style = 'mapbox://styles/mapbox/streets-v11';
-  lat = 23.043721;
-  lng = 78.427236;
-  zoom = 12;
+  lat = 28.631129;
+  lng = 77.217753;
+  
+  zoom = 14;
   bbox = '';
+
+  mapping = new Map();
 
   URL = "https://overpass-api.de/api/interpreter";
 
@@ -39,6 +42,71 @@ export class MapService {
     console.log(this.bbox);
     //console.log(this.http.get(this.URL + '?data=[out:json][timeout:25];(node["highway"]' + this.bbox + ';way["highway"]' + this.bbox + ';relation["highway"]' + this.bbox + ';);out body;>;out skel qt;'));
     return this.http.get(this.URL + '?data=[out:json][timeout:25];(node["highway"]' + this.bbox + ';way["highway"]' + this.bbox + ';relation["highway"]' + this.bbox + ';);out body;>;out skel qt;');
+  }
+
+  createNodeMapping(data):any{
+    let totalNodes = 0;
+    for(let i=0; i<data.elements.length; i++){
+      if(data.elements[i].type == 'node'){
+        this.mapping.set(data.elements[i].id, [data.elements[i].lon, data.elements[i].lat]);
+        totalNodes++;
+
+      }
+    }
+    let totalRoads = this.mapRoads(data);
+    return [totalNodes, totalRoads];
+  }
+
+  mapRoads(data):number{
+    let totalRoads = 0;
+    for(let i=0; i<data.elements.length; i++){
+      if(data.elements[i].type == 'way'){
+        totalRoads++;
+        let arr = [];
+        for(let j=0; j<data.elements[i].nodes.length; j++){
+          arr.push(this.mapping.get(data.elements[i].nodes[j]));
+        }
+        
+        this.map.addSource(data.elements[i].id.toString(), {
+          'type': 'geojson',
+          'data': {
+          'type': 'Feature',
+          'properties': {},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': arr,
+          }
+          }
+        });
+        this.map.addLayer({
+          'id': data.elements[i].id.toString(),
+          'type': 'line',
+          'source': data.elements[i].id.toString(),
+          'layout': {
+          'line-join': 'round',
+          'line-cap': 'round'
+          },
+          'paint': {
+          'line-color': '#3f51b5',
+          'line-width': 4,
+          'line-opacity': 0.6,
+          }
+          });
+
+      }
+    }
+    return totalRoads;
+  }
+
+  removeAllLayers(data){
+    if(data){
+      data.elements.forEach(element => {
+        if(element.type=='way'){
+          this.map.removeLayer(element.id.toString());
+          this.map.removeSource(element.id.toString());
+        }
+      });
+    }
   }
 }
 

@@ -1,6 +1,6 @@
-<section class="w-100 h-100">
-    <mat-toolbar class="shadow-md">
-        <span class="text-primary">Graph Theory</span>
+<section class="w-100 h-100 side-border bg-dark">
+    <mat-toolbar class="bg-primary">
+        <span class="text-white">Graph Theory</span>
     </mat-toolbar>
     <div class="flex column w-75 justify-between h-25 mt-3 m-auto bg-grey border-sm">
         <div class="flex row justify-between">
@@ -15,6 +15,25 @@
 
 
     <div class="w-100 flex row justify-center m-auto mt-3">
-        <button mat-raised-button color="primary" (click) = "onButtonClick()">Critical Roads</button>
+        <button mat-raised-button color="primary" (click) = "onButtonClick()">Find Roads</button>
+    </div>
+
+    <div class="w-75 m-auto mt-3 details">
+        <p class="align-center w-100">
+            <b>Details</b>
+        </p>
+        <p>
+            Total Elements : {{totalElements}}
+        </p>
+        <p>
+            Total Nodes : {{totalNodes}}
+        </p>
+        <p>
+            Total Roads : {{totalRoads}}
+        </p>
+    </div>
+
+    <div class="w-100 flex row justify-center m-auto mt-3">
+        <button mat-raised-button color="accent">Critical Roads</button>
     </div>
 </section>

@@ -15,7 +15,4 @@ export class MapComponent implements OnInit {
     this.map.buildMap();
   }
 
-  onButtonClick(){
-    this.map.getData();
-  }
 }
