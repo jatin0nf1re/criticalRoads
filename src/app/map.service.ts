@@ -18,6 +18,14 @@ export class MapService {
   bbox = '';
 
   mapping = new Map();
+  totNodes = 0;
+  cred = new Map<number, Object>();
+  visited = new Map<number, boolean>();
+  disc = new Map<number, number>();
+  low = new Map<number, number>();
+  parent = new Map<number, number>();
+  time : number;
+  criticalRoads = new Map();
 
   URL = "https://overpass-api.de/api/interpreter";
 
@@ -46,14 +54,23 @@ export class MapService {
 
   createNodeMapping(data):any{
     let totalNodes = 0;
+    this.mapping.clear();
+    this.cred.clear();
     for(let i=0; i<data.elements.length; i++){
       if(data.elements[i].type == 'node'){
-        this.mapping.set(data.elements[i].id, [data.elements[i].lon, data.elements[i].lat]);
+        this.mapping.set(data.elements[i].id, {'location' :[ data.elements[i].lon, data.elements[i].lat], 'conNodes': []} );
+        this.cred.set(data.elements[i].id, {'visited' : false, 'parent': null, 'disc': 0, 'low': 0});
+        this.visited.set(data.elements[i].id, false);
+        this.parent.set(data.elements[i].id, null);
+        this.disc.set(data.elements[i].id, 0);
+        this.low.set(data.elements[i].id, 0);
         totalNodes++;
 
       }
     }
+    this.totNodes = totalNodes;
     let totalRoads = this.mapRoads(data);
+    console.log(this.mapping);
     return [totalNodes, totalRoads];
   }
 
@@ -64,7 +81,11 @@ export class MapService {
         totalRoads++;
         let arr = [];
         for(let j=0; j<data.elements[i].nodes.length; j++){
-          arr.push(this.mapping.get(data.elements[i].nodes[j]));
+          arr.push(this.mapping.get(data.elements[i].nodes[j]).location);
+          if(j>0){
+            this.mapping.get(data.elements[i].nodes[j]).conNodes.push(data.elements[i].nodes[j-1]);
+            this.mapping.get(data.elements[i].nodes[j-1]).conNodes.push(data.elements[i].nodes[j]);
+          }
         }
         
         this.map.addSource(data.elements[i].id.toString(), {
@@ -107,6 +128,76 @@ export class MapService {
         }
       });
     }
+  }
+
+  cutEdgesUtil(key:number){
+    this.visited.set(key, true);
+    this.time += 1;
+    this.disc.set(key, this.time);
+    this.low.set(key, this.time);
+
+    this.mapping.get(key).conNodes.forEach(element => {
+      if(this.visited.get(element)==false){
+        this.parent.set(element, key);
+        this.cutEdgesUtil(element);
+        this.low.set(key, Math.min(this.low.get(element), this.low.get(key)));
+
+        if(this.low.get(element) > this.disc.get(key)){
+          let temp = [];
+          temp.push(this.mapping.get(key).location);
+          temp.push(this.mapping.get(element).location);
+          this.criticalRoads.set( key.toString()+element.toString() , temp);
+        }
+      }else if(element != this.parent.get(key)){
+        this.low.set(key, Math.min(this.low.get(key), this.disc.get(element)));
+      }
+    });
+    
+  }
+
+  findCriticalRoads(){
+    this.time = 0;
+    console.log(this.mapping);
+    console.log("Hey");
+    this.visited.forEach((value, key) => {
+      if(value== false){
+        this.cutEdgesUtil(key);
+      }
+    })
+
+    this.drawCutEdges();
+  }
+
+  drawCutEdges(){
+    this.criticalRoads.forEach((value,key) => {
+
+      this.map.addSource(key, {
+        'type': 'geojson',
+        'data': {
+        'type': 'Feature',
+        'properties': {},
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': value,
+        }
+        }
+      });
+      this.map.addLayer({
+        'id': key,
+        'type': 'line',
+        'source': key,
+        'layout': {
+        'line-join': 'round',
+        'line-cap': 'round'
+        },
+        'paint': {
+        'line-color': '#ec407f',
+        'line-width': 4,
+        'line-opacity': 0.6,
+        }
+        });
+
+    })
   }
 }
 

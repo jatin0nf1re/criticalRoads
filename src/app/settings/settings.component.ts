@@ -32,4 +32,8 @@ export class SettingsComponent implements OnInit {
     });
   }
 
+  findCriticalRoads(){
+    this.map.findCriticalRoads();
+  }
+
 }
