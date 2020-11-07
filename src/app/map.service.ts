@@ -3,6 +3,7 @@ import * as mapboxgl from 'mapbox-gl';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from "../environments/environment";
+import * as betweenness from 'betweenness';
 
 @Injectable({
   providedIn: 'root'
@@ -17,15 +18,30 @@ export class MapService {
   zoom = 14;
   bbox = '';
 
+  idToIndex = [];
+  indexToId = new Map();
+  adjArr = [];
+  visit = [];
+  par = [];
+  dis = [];
+  lowT = [];
+  critRoads = [];
+
+
   mapping = new Map();
   totNodes = 0;
-  cred = new Map<number, Object>();
   visited = new Map<number, boolean>();
   disc = new Map<number, number>();
   low = new Map<number, number>();
   parent = new Map<number, number>();
   time : number;
   criticalRoads = new Map();
+
+  //For Betweeness Value
+  nodes = [];
+  allBetweenness = [];
+  standardBetweenness;
+  idToId = new Map();
 
   URL = "https://overpass-api.de/api/interpreter";
 
@@ -55,22 +71,30 @@ export class MapService {
   createNodeMapping(data):any{
     let totalNodes = 0;
     this.mapping.clear();
-    this.cred.clear();
+    let index = 0;
     for(let i=0; i<data.elements.length; i++){
       if(data.elements[i].type == 'node'){
-        this.mapping.set(data.elements[i].id, {'location' :[ data.elements[i].lon, data.elements[i].lat], 'conNodes': []} );
-        this.cred.set(data.elements[i].id, {'visited' : false, 'parent': null, 'disc': 0, 'low': 0});
-        this.visited.set(data.elements[i].id, false);
-        this.parent.set(data.elements[i].id, null);
-        this.disc.set(data.elements[i].id, 0);
-        this.low.set(data.elements[i].id, 0);
+        this.idToIndex.push(data.elements[i].id);
+        this.indexToId.set(data.elements[i].id, index);
+        this.adjArr[index] = {'id': index ,'location' :[ data.elements[i].lon, data.elements[i].lat], 'outEdges': []}
+        this.visit.push(false);
+        this.par.push(null);
+        this.dis.push(0);
+        this.dis.push(0);
+        index++;
+
+        // this.mapping.set(data.elements[i].id, {'location' :[ data.elements[i].lon, data.elements[i].lat], 'conNodes': []} );
+        // this.visited.set(data.elements[i].id, false);
+        // this.parent.set(data.elements[i].id, null);
+        // this.disc.set(data.elements[i].id, 0);
+        // this.low.set(data.elements[i].id, 0);
         totalNodes++;
 
       }
     }
     this.totNodes = totalNodes;
     let totalRoads = this.mapRoads(data);
-    console.log(this.mapping);
+    console.log(this.adjArr);
     return [totalNodes, totalRoads];
   }
 
@@ -81,10 +105,13 @@ export class MapService {
         totalRoads++;
         let arr = [];
         for(let j=0; j<data.elements[i].nodes.length; j++){
-          arr.push(this.mapping.get(data.elements[i].nodes[j]).location);
+          arr.push(this.adjArr[this.indexToId.get(data.elements[i].nodes[j])].location);
           if(j>0){
-            this.mapping.get(data.elements[i].nodes[j]).conNodes.push(data.elements[i].nodes[j-1]);
-            this.mapping.get(data.elements[i].nodes[j-1]).conNodes.push(data.elements[i].nodes[j]);
+            this.adjArr[this.indexToId.get(data.elements[i].nodes[j])].outEdges.push(this.indexToId.get(data.elements[i].nodes[j-1]));
+            this.adjArr[this.indexToId.get(data.elements[i].nodes[j-1])].outEdges.push(this.indexToId.get(data.elements[i].nodes[j]));
+
+            // this.mapping.get(data.elements[i].nodes[j]).conNodes.push(data.elements[i].nodes[j-1]);
+            // this.mapping.get(data.elements[i].nodes[j-1]).conNodes.push(data.elements[i].nodes[j]);
           }
         }
         
@@ -130,62 +157,131 @@ export class MapService {
     }
   }
 
-  cutEdgesUtil(key:number){
-    this.visited.set(key, true);
-    this.time += 1;
-    this.disc.set(key, this.time);
-    this.low.set(key, this.time);
+  // cutEdgesUtil(key:number){
+  //   this.visited.set(key, true);
+  //   this.time += 1;
+  //   this.disc.set(key, this.time);
+  //   this.low.set(key, this.time);
 
-    this.mapping.get(key).conNodes.forEach(element => {
-      if(this.visited.get(element)==false){
-        this.parent.set(element, key);
+  //   this.mapping.get(key).conNodes.forEach(element => {
+  //     if(this.visited.get(element)==false){
+  //       this.parent.set(element, key);
+  //       this.cutEdgesUtil(element);
+  //       this.low.set(key, Math.min(this.low.get(element), this.low.get(key)));
+
+  //       if(this.low.get(element) > this.disc.get(key)){
+  //         let temp = [];
+  //         temp.push(this.mapping.get(key).location);
+  //         temp.push(this.mapping.get(element).location);
+  //         this.criticalRoads.set( key.toString()+element.toString() , temp);
+  //       }
+  //     }else if(element != this.parent.get(key)){
+  //       this.low.set(key, Math.min(this.low.get(key), this.disc.get(element)));
+  //     }
+  //   });
+    
+  // }
+
+  cutEdgesUtil(u : number) {
+
+    this.visit[u] = true;
+    this.time +=1;
+    this.dis[u] = this.time;
+    this.lowT[u] = this.time;
+
+    this.adjArr[u].outEdges.forEach((element) => {
+      if(this.visit[element] == false){
+        this.par[element] = u;
         this.cutEdgesUtil(element);
-        this.low.set(key, Math.min(this.low.get(element), this.low.get(key)));
+        this.lowT[u] = Math.min(this.lowT[element], this.lowT[u]);
 
-        if(this.low.get(element) > this.disc.get(key)){
+        if(this.lowT[element] > this.dis[u]){
           let temp = [];
-          temp.push(this.mapping.get(key).location);
-          temp.push(this.mapping.get(element).location);
-          this.criticalRoads.set( key.toString()+element.toString() , temp);
+          temp.push(this.adjArr[u].location);
+          temp.push(this.adjArr[element].location);
+          this.critRoads.push({"id": u.toString()+'-'+element.toString(), 'coordinates': temp});
         }
-      }else if(element != this.parent.get(key)){
-        this.low.set(key, Math.min(this.low.get(key), this.disc.get(element)));
+      }else if(element != this.par[u]){
+        this.lowT[u] = Math.min(this.lowT[u], this.dis[element]);
       }
     });
-    
+
   }
 
   findCriticalRoads(){
     this.time = 0;
     console.log(this.mapping);
     console.log("Hey");
-    this.visited.forEach((value, key) => {
-      if(value== false){
-        this.cutEdgesUtil(key);
+
+    this.visit.forEach((val, ind) => {
+      if(val == false){
+        this.cutEdgesUtil(ind);
       }
     })
 
+    // this.visited.forEach((value, key) => {
+    //   if(value== false){
+    //     this.cutEdgesUtil(key);
+    //   }
+    // })
+
+    this.findBetweenness();
+
+    console.log("Done");
+    console.log(this.critRoads);
+    //console.log(this.criticalRoads);
     this.drawCutEdges();
+    console.log("Done");
   }
 
   drawCutEdges(){
-    this.criticalRoads.forEach((value,key) => {
+    // this.criticalRoads.forEach((value,key) => {
 
-      this.map.addSource(key, {
+    //   this.map.addSource(key, {
+    //     'type': 'geojson',
+    //     'data': {
+    //     'type': 'Feature',
+    //     'properties': {},
+    //     'geometry': {
+    //       'type': 'LineString',
+    //       'coordinates': value,
+    //     }
+    //     }
+    //   });
+    //   this.map.addLayer({
+    //     'id': key,
+    //     'type': 'line',
+    //     'source': key,
+    //     'layout': {
+    //     'line-join': 'round',
+    //     'line-cap': 'round'
+    //     },
+    //     'paint': {
+    //     'line-color': '#ec407f',
+    //     'line-width': 4,
+    //     'line-opacity': 0.6,
+    //     }
+    //     });
+
+    // })
+
+    this.critRoads.forEach((ele) => {
+
+      this.map.addSource(ele.id, {
         'type': 'geojson',
         'data': {
         'type': 'Feature',
         'properties': {},
         'geometry': {
           'type': 'LineString',
-          'coordinates': value,
+          'coordinates': ele.coordinates,
         }
         }
       });
       this.map.addLayer({
-        'id': key,
+        'id': ele.id,
         'type': 'line',
-        'source': key,
+        'source': ele.id,
         'layout': {
         'line-join': 'round',
         'line-cap': 'round'
@@ -199,6 +295,46 @@ export class MapService {
 
     })
   }
+
+
+  findBetweenness(){
+    console.log("Aaya");
+    var betweenessValues = betweenness.edge().nodes(this.adjArr).calc();
+    let sum = 0;
+    betweenessValues.forEach((element, ind) => {
+      element.forEach((ele, index) => {
+        if(typeof ele == "number" && ele!=0){
+          this.allBetweenness.push({"coordinates" : [ind, index], "value": ele});
+          sum+=ele;
+        }
+      })
+    });
+
+
+    this.allBetweenness.sort((a,b) => {
+      return a.value - b.value;
+    });
+
+    let avg = sum/this.allBetweenness.length;
+    let sumSqDiff = 0;
+    let sqDiff = this.allBetweenness.map((val) => {
+      sumSqDiff+=Math.pow(val.value - avg, 2);
+      return Math.pow(val.value - avg, 2);
+    })
+
+    let std = Math.sqrt(sumSqDiff/(this.allBetweenness.length-1));
+
+    this.standardBetweenness = this.allBetweenness.map((ele) => {
+      return {"coordinates" : ele.coordinates, "value": (ele.value-avg)/std};
+    })
+
+    console.log(this.standardBetweenness);
+    console.log(std);
+    console.log("Gaya");
+  }
+
+
+
 }
 
 

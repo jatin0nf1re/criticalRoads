@@ -33,6 +33,7 @@ export class SettingsComponent implements OnInit {
   }
 
   findCriticalRoads(){
+    this.map.removeAllLayers(this.areaData);
     this.map.findCriticalRoads();
   }
 
