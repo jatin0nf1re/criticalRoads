@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MapService } from '../map.service';
 
 @Component({
@@ -8,7 +9,9 @@ import { MapService } from '../map.service';
 })
 export class SettingsComponent implements OnInit {
 
-  constructor(private map : MapService) { }
+  constructor(private map : MapService, private fb : FormBuilder) {
+    this.createForm();
+  }
 
   ngOnInit(): void {
   }
@@ -17,7 +20,20 @@ export class SettingsComponent implements OnInit {
   totalNodes=0;
   totalRoads=0;
   totalElements=0;
+  form: FormGroup;
 
+  createForm(){
+    this.form = this.fb.group({
+      rating: '',
+      comment: ['', [Validators.required, Validators.minLength(2)]],
+      author: ['', [Validators.required, Validators.minLength(2)]],
+      date: '',
+    });
+
+    //this.form.valueChanges.subscribe((data) => this.onValueChanged(data));
+
+    //this.onValueChanged();
+  }
 
   onButtonClick(){
     this.map.removeAllLayers(this.areaData);

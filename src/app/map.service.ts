@@ -88,6 +88,52 @@ export class MapService {
         // this.parent.set(data.elements[i].id, null);
         // this.disc.set(data.elements[i].id, 0);
         // this.low.set(data.elements[i].id, 0);
+        // let tempMap = this.map;
+        // this.map.loadImage('https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
+        //   function (error, image) {
+        //     if (error) throw error;
+        //     tempMap.addImage('custom-marker', image);
+        //     // Add a GeoJSON source with 2 points
+        //     tempMap.addSource(data.elements[i].id.toString(), {
+        //       'type': 'geojson',
+        //       'data': {
+        //         'type': 'FeatureCollection',
+        //         'features': [
+        //           {
+        //     // feature for Mapbox DC
+        //             'type': 'Feature',
+        //             'geometry': {
+        //               'type': 'Point',
+        //               'coordinates': [
+        //                 data.elements[i].lon,
+        //                 data.elements[i].lat
+        //               ]
+        //             },
+        //             'properties': {
+        //               'title': 'Mapbox DC'
+        //             }
+        //           }]}});
+            
+        //     // Add a symbol layer
+        //     tempMap.addLayer({
+        //     'id': data.elements[i].id.toString(),
+        //     'type': 'symbol',
+        //     'source': data.elements[i].id.toString(),
+        //     'layout': {
+        //     'icon-image': 'custom-marker',
+        //     // get the title name from the source's "title" property
+        //     'text-field': ['get', 'title'],
+        //     'text-font': [
+        //     'Open Sans Semibold',
+        //     'Arial Unicode MS Bold'
+        //     ],
+        //     'text-offset': [0, 1.25],
+        //     'text-anchor': 'top'
+        //     }
+        //     });
+        //   }
+        //   );
+
         totalNodes++;
 
       }
