@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MapService } from '../map.service';
 
 @Component({
@@ -20,15 +20,17 @@ export class SettingsComponent implements OnInit {
   totalNodes=0;
   totalRoads=0;
   totalElements=0;
+  betweennessChoice = new FormControl();
+  threshold = new FormControl();
   form: FormGroup;
 
   createForm(){
     this.form = this.fb.group({
-      rating: '',
-      comment: ['', [Validators.required, Validators.minLength(2)]],
-      author: ['', [Validators.required, Validators.minLength(2)]],
-      date: '',
+      basis : this.betweennessChoice,
+      thres : this.threshold,
     });
+
+
 
     //this.form.valueChanges.subscribe((data) => this.onValueChanged(data));
 
@@ -51,6 +53,12 @@ export class SettingsComponent implements OnInit {
   findCriticalRoads(){
     this.map.removeAllLayers(this.areaData);
     this.map.findCriticalRoads();
+  }
+
+  getMore(){
+    console.log(this.form.get('basis').value);
+    console.log(this.form.get('thres').value);
+
   }
 
 }
